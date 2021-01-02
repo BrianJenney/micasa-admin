@@ -77,6 +77,26 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     {
       label: 'Water Heater and Smoke Detector',
       value: 'WHSD'
+    },
+    {
+      label: 'Earthquake/Environmental Booklet Receipt',
+      value: 'EEBR'
+    },
+    {
+      label: 'Earthquake Hazards Disclosure',
+      value: 'EHD'
+    },
+    {
+      label: 'Lead-based Paint Disclosure',
+      value: 'LPD'
+    },
+    {
+      label: 'Market Condition Advisory',
+      value: 'MCA'
+    },
+    {
+      label: 'Agent Visual Inspection Disclosure',
+      value: 'AVID'
     }
   ];
 
