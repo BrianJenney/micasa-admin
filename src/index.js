@@ -5,8 +5,8 @@ import reportWebVitals from './reportWebVitals';
 import axios from 'axios';
 
 axios.defaults.baseURL =
-  process.env.REACT_ENV === 'production'
-    ? 'http://localhost:8081'
+  process.env.REACT_APP_ENV === 'production'
+    ? 'https://micasa-services.com'
     : 'http://localhost:8081';
 
 ReactDOM.render(
