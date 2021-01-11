@@ -21,6 +21,7 @@ type User = {
   lastName: string;
   _id: string;
   documents: Document[];
+  county?: string;
 };
 
 export type UserData = User[];
@@ -34,13 +35,15 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [documentsToSend, addDocuments] = useState<Array<string>>([]);
   const [userOptions, setuserOptions] = useState<FormOptions[]>([]);
   const [userAddress, setUserAddress] = useState<String>('');
+  const [userCounty, setUserCounty] = useState<String>('');
   const [selectedUser, setUser] = useState<User>({
     address: '',
     email: '',
     firstName: '',
     lastName: '',
     _id: '',
-    documents: []
+    documents: [],
+    county: ''
   });
 
   useEffect(() => {
@@ -132,11 +135,12 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     const { documents } = config;
     const userId = selectedUser._id;
     const address = userAddress.length ? userAddress : selectedUser.address;
+    const county = userCounty.length ? userCounty : selectedUser.county;
 
     return axios.post('/api/user/graphqlUser', {
       operationName: 'addDocument',
-      query: `mutation addDocument ($userId: String!, $address: String!, $documents: [String!]) {
-            addDocument (userId: $userId, documents: $documents, address: $address){
+      query: `mutation addDocument ($userId: String!, $address: String!, $county: String!, $documents: [String!]) {
+            addDocument (userId: $userId, documents: $documents, address: $address, county: $county){
                 _id,
                 documents {
                     name,
@@ -148,7 +152,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       variables: {
         userId,
         documents,
-        address
+        address,
+        county
       }
     });
   };
@@ -224,6 +229,16 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             }
             value={selectedUser.address}
             placeholder={selectedUser.address}
+          />
+        </Form.Item>
+        <Form.Item name="UserCounty" label="User County">
+          <Input
+            type="text"
+            onChange={(e: React.FormEvent<HTMLInputElement>) =>
+              setUserCounty(e?.currentTarget?.value)
+            }
+            value={selectedUser.county}
+            placeholder={selectedUser.county}
           />
         </Form.Item>
         <h2>Documents To Send: </h2>

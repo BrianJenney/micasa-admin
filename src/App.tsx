@@ -14,6 +14,7 @@ const App: FC = () => {
           users{
               _id
               address
+              county
               lastName
               firstName
               email
