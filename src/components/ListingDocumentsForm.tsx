@@ -1,7 +1,9 @@
 import React, { useState, useEffect, FC } from 'react';
-import { Form, Input, Button, Space, Select } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Space, Select, Upload, Spin } from 'antd';
+import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
+
+declare const window: any;
 
 type FormOptions = {
   label: string;
@@ -22,6 +24,7 @@ type User = {
   _id: string;
   documents: Document[];
   county?: string;
+  parcel: string;
 };
 
 export type UserData = User[];
@@ -32,10 +35,13 @@ interface ListingDocumentFormProps {
 
 const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [form] = Form.useForm();
+  const [processing, setProcessing] = useState<Boolean>(false);
   const [documentsToSend, addDocuments] = useState<Array<string>>([]);
   const [userOptions, setuserOptions] = useState<FormOptions[]>([]);
   const [userAddress, setUserAddress] = useState<String>('');
   const [userCounty, setUserCounty] = useState<String>('');
+  const [parcel, setParcel] = useState<String>('');
+  const [fileList, setFileList] = useState<any[]>([]);
   const [selectedUser, setUser] = useState<User>({
     address: '',
     email: '',
@@ -43,7 +49,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     lastName: '',
     _id: '',
     documents: [],
-    county: ''
+    county: '',
+    parcel: ''
   });
 
   useEffect(() => {
@@ -128,19 +135,41 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         );
         const updatedUser = { ...selectedUser, documents: filteredDocuments };
         setUser(updatedUser);
+        addDocuments([]);
       });
   };
 
-  const submitForm = (config: { documents: string[] }) => {
+  const clearForm = () => {
+    form.resetFields();
+    addDocuments([]);
+    setFileList([]);
+    setProcessing(false);
+  };
+
+  const submitForm = async (config: { documents: string[] }) => {
+    setProcessing(true);
     const { documents } = config;
     const userId = selectedUser._id;
     const address = userAddress.length ? userAddress : selectedUser.address;
     const county = userCounty.length ? userCounty : selectedUser.county;
 
-    return axios.post('/api/user/graphqlUser', {
-      operationName: 'addDocument',
-      query: `mutation addDocument ($userId: String!, $address: String!, $county: String!, $documents: [String!]) {
-            addDocument (userId: $userId, documents: $documents, address: $address, county: $county){
+    let pdfUrl: string = '';
+
+    if (fileList.length) {
+      const formData: FormData = new FormData();
+      formData.append('file', fileList[0]);
+      const cloudinaryData: any = await axios.post(
+        '/api/documents/uploadToCloudinary',
+        formData
+      );
+      pdfUrl = cloudinaryData?.data?.pdfUrl;
+    }
+
+    return axios
+      .post('/api/user/graphqlUser', {
+        operationName: 'addDocument',
+        query: `mutation addDocument ($userId: String!, $address: String!, $county: String!, $parcel: String!, $documents: [String!], $pdfUrl: String!) {
+            addDocument (userId: $userId, documents: $documents, address: $address, parcel: $parcel, county: $county, pdfUrl: $pdfUrl){
                 _id,
                 documents {
                     name,
@@ -149,13 +178,17 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
                 }
             }
         }`,
-      variables: {
-        userId,
-        documents,
-        address,
-        county
-      }
-    });
+        variables: {
+          userId,
+          documents,
+          address,
+          county,
+          parcel,
+          pdfUrl
+        }
+      })
+      .then(() => clearForm())
+      .catch(() => clearForm());
   };
 
   const handleChange = (val: string) => {
@@ -194,6 +227,33 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     form.resetFields();
   };
 
+  const props = {
+    onRemove: () => {
+      setFileList([]);
+    },
+    beforeUpload: (file: any) => {
+      setFileList([file]);
+      return false;
+    },
+    fileList
+  };
+
+  if (processing) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh'
+        }}
+      >
+        <Spin size="large" />
+        <h1>Processing your documents</h1>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginLeft: '1em', width: '50%', margin: 'auto' }}>
       <Form
@@ -203,8 +263,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         autoComplete="off"
       >
         <Form.Item
-          name="User"
-          label="User"
+          name="Seller"
+          label="Seller"
           rules={[{ required: true, message: 'Missing area' }]}
         >
           <Select options={userOptions} onChange={handleChange} />
@@ -214,14 +274,14 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
           <>
             <Space key={doc.name} align="baseline" style={{ width: '100%' }}>
               <Form.Item>{doc.name}</Form.Item>
-              <Form.Item name="Completed" label="Completed">
+              <Form.Item label="Completed">
                 <Input checked={doc.completed} disabled type="checkbox" />
               </Form.Item>
               <MinusCircleOutlined onClick={() => removeDocument(doc.name)} />
             </Space>
           </>
         ))}
-        <Form.Item name="UserAddress" label="User Address">
+        <Form.Item label="Seller Street Address">
           <Input
             type="text"
             onChange={(e: React.FormEvent<HTMLInputElement>) =>
@@ -231,7 +291,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             placeholder={selectedUser.address}
           />
         </Form.Item>
-        <Form.Item name="UserCounty" label="User County">
+
+        <Form.Item name="UserCounty" label="Seller County">
           <Input
             type="text"
             onChange={(e: React.FormEvent<HTMLInputElement>) =>
@@ -241,53 +302,37 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             placeholder={selectedUser.county}
           />
         </Form.Item>
+        <Form.Item name="Parcel" label="Seller Parcel">
+          <Input
+            type="text"
+            onChange={(e: React.FormEvent<HTMLInputElement>) =>
+              setParcel(e?.currentTarget?.value)
+            }
+            value={selectedUser.parcel}
+            placeholder={selectedUser.parcel}
+          />
+        </Form.Item>
         <h2>Documents To Send: </h2>
         {selectedUser.firstName.length > 0 && (
-          <Form.List name="documentInfo">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map((field) => (
-                  <Space
-                    key={field.key}
-                    align="baseline"
-                    style={{ width: '100%' }}
-                  >
-                    <Form.Item
-                      noStyle
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.documentInfo.length !==
-                        curValues.documentInfo.length
-                      }
-                    >
-                      {() => (
-                        <Form.Item {...field} label="Document Name">
-                          <Select
-                            style={{ width: 200 }}
-                            options={documentOptions}
-                            onChange={updateForm}
-                          />
-                        </Form.Item>
-                      )}
-                    </Form.Item>
-
-                    <MinusCircleOutlined onClick={() => remove(field.name)} />
-                  </Space>
-                ))}
-
-                <Form.Item>
-                  <Button
-                    type="dashed"
-                    onClick={() => add()}
-                    block
-                    icon={<PlusOutlined />}
-                  >
-                    Add Documents
-                  </Button>
-                </Form.Item>
-              </>
-            )}
-          </Form.List>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, curValues) =>
+              prevValues.documentInfo.length !== curValues.documentInfo.length
+            }
+          >
+            <Form.Item label="Document Name">
+              <Select
+                style={{ width: 200 }}
+                options={documentOptions}
+                onChange={updateForm}
+              />
+              <Upload {...props}>
+                <Button icon={<UploadOutlined />}>Select File</Button>
+              </Upload>
+            </Form.Item>
+          </Form.Item>
         )}
+
         <Form.Item>
           <Button type="primary" htmlType="submit">
             Submit

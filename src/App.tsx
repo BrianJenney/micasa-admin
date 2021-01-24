@@ -15,6 +15,7 @@ const App: FC = () => {
               _id
               address
               county
+              parcel
               lastName
               firstName
               email
