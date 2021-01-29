@@ -4,6 +4,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import axios from 'axios';
 
+console.log(process.env, 'ENVIRONMENT');
 axios.defaults.baseURL =
   process.env.REACT_APP_ENV === 'production'
     ? 'https://micasa-services.com'
