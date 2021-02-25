@@ -19,6 +19,15 @@ const App: FC = () => {
               lastName
               firstName
               email
+              buyers {
+                name
+                counterOffers {
+                  name
+                  signatureId
+                  counterOfferId
+                  completed
+                }
+              }
               documents {
                 name
                 completed

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, FC } from 'react';
-import { Form, Input, Button, Space, Select, Upload, Spin } from 'antd';
+import { Form, Input, Button, Select, Upload, Spin, Space } from 'antd';
 import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { DatePicker } from 'antd';
 
-declare const window: any;
+import axios from 'axios';
 
 type FormOptions = {
   label: string;
@@ -16,6 +16,19 @@ type Document = {
   signatureId: string;
 };
 
+export type CounterOffers = {
+  name: string;
+  completed: boolean;
+  signatureId: string;
+  counterOfferId: string;
+};
+
+export type Buyer = {
+  _id: string;
+  name: string;
+  counterOffers: CounterOffers[];
+};
+
 type User = {
   address: string;
   email: string;
@@ -25,6 +38,7 @@ type User = {
   documents: Document[];
   county?: string;
   parcel: string;
+  buyers: Buyer[];
 };
 
 export type UserData = User[];
@@ -35,9 +49,11 @@ interface ListingDocumentFormProps {
 
 const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [form] = Form.useForm();
+  const [formType, setFormType] = useState<String>('seller');
   const [processing, setProcessing] = useState<Boolean>(false);
   const [documentsToSend, addDocuments] = useState<Array<string>>([]);
   const [userOptions, setuserOptions] = useState<FormOptions[]>([]);
+  const [buyerOptions, setBuyerOptions] = useState<FormOptions[]>([]);
   const [userAddress, setUserAddress] = useState<String>('');
   const [userCounty, setUserCounty] = useState<String>('');
   const [parcel, setParcel] = useState<String>('');
@@ -50,7 +66,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     _id: '',
     documents: [],
     county: '',
-    parcel: ''
+    parcel: '',
+    buyers: []
   });
 
   useEffect(() => {
@@ -69,44 +86,20 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
 
   const documentOptions: FormOptions[] = [
     {
-      label: 'Statewide Buyer Seller Advisory',
-      value: 'SBSA'
-    },
-    {
       label: 'Seller Property Questionnaire',
       value: 'SPQ'
     },
     {
-      label: 'Transfer Disclosure Agreement',
-      value: 'TDS'
+      label: 'Residential Purchase Agreement',
+      value: 'RPA'
     },
     {
-      label: 'Water Conserving Carbon Monoxide',
-      value: 'WCCM'
+      label: 'Buyer Counter Offer',
+      value: 'BCO'
     },
     {
-      label: 'Water Heater and Smoke Detector',
-      value: 'WHSD'
-    },
-    {
-      label: 'Earthquake/Environmental Booklet Receipt',
-      value: 'EEBR'
-    },
-    {
-      label: 'Earthquake Hazards Disclosure',
-      value: 'EHD'
-    },
-    {
-      label: 'Lead-based Paint Disclosure',
-      value: 'LPD'
-    },
-    {
-      label: 'Market Condition Advisory',
-      value: 'MCA'
-    },
-    {
-      label: 'Agent Visual Inspection Disclosure',
-      value: 'AVID'
+      label: 'Repair for Request',
+      value: 'RR'
     }
   ];
 
@@ -195,6 +188,11 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     const selectedUser = userData.find((user: User) => user._id === val);
     if (selectedUser) {
       setUser(selectedUser);
+      const buyerOptions = selectedUser.buyers.map((buyer) => ({
+        label: buyer.name,
+        value: buyer._id
+      }));
+      setBuyerOptions(buyerOptions);
     }
   };
 
@@ -232,6 +230,10 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       setFileList([]);
     },
     beforeUpload: (file: any) => {
+      if (file.type !== 'application/pdf') {
+        alert('Contracts must be PDFs');
+        return false;
+      }
       setFileList([file]);
       return false;
     },
@@ -256,6 +258,26 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
 
   return (
     <div style={{ marginLeft: '1em', width: '50%', margin: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-evenly' }}>
+        <p
+          style={{
+            color: 'blue',
+            textDecoration: formType === 'seller' ? 'underline' : 'none'
+          }}
+          onClick={() => setFormType('seller')}
+        >
+          Seller
+        </p>
+        <p
+          style={{
+            color: 'blue',
+            textDecoration: formType === 'buyer' ? 'underline' : 'none'
+          }}
+          onClick={() => setFormType('buyer')}
+        >
+          Buyer
+        </p>
+      </div>
       <Form
         form={form}
         name="dynamic_form_nest_item"
@@ -269,49 +291,68 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         >
           <Select options={userOptions} onChange={handleChange} />
         </Form.Item>
-        {selectedUser.documents.length > 0 && <h2>Sent Documents: </h2>}
-        {(selectedUser.documents || []).map((doc) => (
+        {formType === 'seller' && (
           <>
-            <Space key={doc.name} align="baseline" style={{ width: '100%' }}>
-              <Form.Item>{doc.name}</Form.Item>
-              <Form.Item label="Completed">
-                <Input checked={doc.completed} disabled type="checkbox" />
-              </Form.Item>
-              <MinusCircleOutlined onClick={() => removeDocument(doc.name)} />
-            </Space>
-          </>
-        ))}
-        <Form.Item label="Seller Street Address">
-          <Input
-            type="text"
-            onChange={(e: React.FormEvent<HTMLInputElement>) =>
-              setUserAddress(e?.currentTarget?.value)
-            }
-            value={selectedUser.address}
-            placeholder={selectedUser.address}
-          />
-        </Form.Item>
+            {selectedUser.documents.length > 0 && <h2>Sent Documents: </h2>}
+            {(selectedUser.documents || []).map((doc) => (
+              <>
+                <Space
+                  key={doc.name}
+                  align="baseline"
+                  style={{ width: '100%' }}
+                >
+                  <Form.Item>{doc.name}</Form.Item>
+                  <Form.Item label="Completed">
+                    <Input checked={doc.completed} disabled type="checkbox" />
+                  </Form.Item>
+                  <MinusCircleOutlined
+                    onClick={() => removeDocument(doc.name)}
+                  />
+                </Space>
+              </>
+            ))}
+            <Form.Item label="Seller Street Address">
+              <Input
+                type="text"
+                onChange={(e: React.FormEvent<HTMLInputElement>) =>
+                  setUserAddress(e?.currentTarget?.value)
+                }
+                value={selectedUser.address}
+                placeholder={selectedUser.address}
+              />
+            </Form.Item>
 
-        <Form.Item name="UserCounty" label="Seller County">
-          <Input
-            type="text"
-            onChange={(e: React.FormEvent<HTMLInputElement>) =>
-              setUserCounty(e?.currentTarget?.value)
-            }
-            value={selectedUser.county}
-            placeholder={selectedUser.county}
-          />
-        </Form.Item>
-        <Form.Item name="Parcel" label="Seller Parcel">
-          <Input
-            type="text"
-            onChange={(e: React.FormEvent<HTMLInputElement>) =>
-              setParcel(e?.currentTarget?.value)
-            }
-            value={selectedUser.parcel}
-            placeholder={selectedUser.parcel}
-          />
-        </Form.Item>
+            <Form.Item name="UserCounty" label="Seller County">
+              <Input
+                type="text"
+                onChange={(e: React.FormEvent<HTMLInputElement>) =>
+                  setUserCounty(e?.currentTarget?.value)
+                }
+                value={selectedUser.county}
+                placeholder={selectedUser.county}
+              />
+            </Form.Item>
+            <Form.Item name="Parcel" label="Seller Parcel">
+              <Input
+                type="text"
+                onChange={(e: React.FormEvent<HTMLInputElement>) =>
+                  setParcel(e?.currentTarget?.value)
+                }
+                value={selectedUser.parcel}
+                placeholder={selectedUser.parcel}
+              />
+            </Form.Item>
+          </>
+        )}
+        {formType === 'buyer' && (
+          <Form.Item
+            name="Buyer"
+            label="Buyer"
+            rules={[{ required: true, message: 'Missing area' }]}
+          >
+            <Select options={buyerOptions} onChange={() => {}} />
+          </Form.Item>
+        )}
         <h2>Documents To Send: </h2>
         {selectedUser.firstName.length > 0 && (
           <Form.Item
@@ -329,6 +370,9 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
               <Upload {...props}>
                 <Button icon={<UploadOutlined />}>Select File</Button>
               </Upload>
+            </Form.Item>
+            <Form.Item label="Expiration For Counter Offer">
+              <DatePicker size="large" />
             </Form.Item>
           </Form.Item>
         )}
