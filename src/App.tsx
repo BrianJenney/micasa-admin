@@ -20,6 +20,7 @@ const App: FC = () => {
               firstName
               email
               buyers {
+                _id
                 name
                 counterOffers {
                   name

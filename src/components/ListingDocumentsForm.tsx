@@ -1,11 +1,20 @@
 import React, { useState, useEffect, FC } from 'react';
-import { Form, Input, Button, Select, Upload, Spin, Space } from 'antd';
+import {
+  Form,
+  Input,
+  Button,
+  Select,
+  Upload,
+  Spin,
+  Space,
+  TimePicker
+} from 'antd';
 import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { DatePicker } from 'antd';
 
 import axios from 'axios';
 
-type FormOptions = {
+export type FormOptions = {
   label: string;
   value: string;
 };
@@ -29,7 +38,7 @@ export type Buyer = {
   counterOffers: CounterOffers[];
 };
 
-type User = {
+export type User = {
   address: string;
   email: string;
   firstName: string;
@@ -43,7 +52,7 @@ type User = {
 
 export type UserData = User[];
 
-interface ListingDocumentFormProps {
+export interface ListingDocumentFormProps {
   userData: User[];
 }
 
@@ -58,6 +67,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [userCounty, setUserCounty] = useState<String>('');
   const [parcel, setParcel] = useState<String>('');
   const [fileList, setFileList] = useState<any[]>([]);
+  const [newBuyerName, setNewBuyerName] = useState<string>('');
+  const [expirationDate, setDate] = useState<any>(new Date());
   const [selectedUser, setUser] = useState<User>({
     address: '',
     email: '',
@@ -68,6 +79,11 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     county: '',
     parcel: '',
     buyers: []
+  });
+  const [selectedBuyer, setBuyer] = useState<Buyer>({
+    name: '',
+    _id: '',
+    counterOffers: []
   });
 
   useEffect(() => {
@@ -102,6 +118,42 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       value: 'RR'
     }
   ];
+
+  const createBuyer = () => {
+    return axios
+      .post('api/buyer/graphqlBuyer', {
+        query: `mutation createBuyer($buyerName: String!, $sellerId:String!) {
+        createBuyer(buyerName: $buyerName, sellerId: $sellerId) {
+          _id
+          name
+          counterOffers{
+            name
+            expirationTime
+            counterOfferId
+          }
+        }
+      }`,
+        variables: {
+          buyerName: newBuyerName,
+          sellerId: selectedUser._id
+        }
+      })
+      .then((res) => {
+        console.log(res);
+        const buyerData = res?.data?.data?.createBuyer || {};
+        if (buyerData._id) {
+          const newBuyerOptions = [
+            ...buyerOptions,
+            {
+              label: newBuyerName,
+              value: buyerData._id
+            }
+          ];
+          setBuyerOptions(newBuyerOptions);
+          setNewBuyerName('');
+        }
+      });
+  };
 
   const removeDocument = (documentName: string) => {
     const userId = selectedUser._id;
@@ -158,6 +210,40 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       pdfUrl = cloudinaryData?.data?.pdfUrl;
     }
 
+    if (formType === 'buyer') {
+      return axios
+        .post('/api/buyer/graphqlBuyer', {
+          operationName: 'addCounterOffer',
+          query: `mutation addCounterOffer(
+          $buyerId: String!,
+          $sellerId: String!,
+          $pdfUrl: String!,
+          $expirationTime:String,
+          $title: String!
+        ){
+          addCounterOffer (buyerId:$buyerId, sellerId:$sellerId, pdfUrl: $pdfUrl, expirationTime: $expirationTime, title: $title){
+            _id
+            counterOffers {
+              name
+              signatureId
+              counterOfferId
+              expirationTime
+              completed
+            }
+          }
+        }`,
+          variables: {
+            buyerId: selectedBuyer._id,
+            sellerId: selectedUser._id,
+            pdfUrl,
+            expirationTime: expirationDate.toString(),
+            title: documents[0]
+          }
+        })
+        .then(() => clearForm())
+        .catch(() => clearForm());
+    }
+
     return axios
       .post('/api/user/graphqlUser', {
         operationName: 'addDocument',
@@ -186,6 +272,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
 
   const handleChange = (val: string) => {
     const selectedUser = userData.find((user: User) => user._id === val);
+    console.log(selectedUser?.buyers);
     if (selectedUser) {
       setUser(selectedUser);
       const buyerOptions = selectedUser.buyers.map((buyer) => ({
@@ -193,6 +280,15 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         value: buyer._id
       }));
       setBuyerOptions(buyerOptions);
+    }
+  };
+
+  const handleBuyerChange = (val: string) => {
+    const chosenBuyer = selectedUser.buyers.find(
+      (buyer: Buyer) => buyer._id === val
+    );
+    if (chosenBuyer) {
+      setBuyer(chosenBuyer);
     }
   };
 
@@ -345,13 +441,32 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
           </>
         )}
         {formType === 'buyer' && (
-          <Form.Item
-            name="Buyer"
-            label="Buyer"
-            rules={[{ required: true, message: 'Missing area' }]}
-          >
-            <Select options={buyerOptions} onChange={() => {}} />
-          </Form.Item>
+          <>
+            <Form.Item name="Buyer" label="Buyer">
+              <Select
+                options={buyerOptions}
+                onChange={handleBuyerChange}
+              ></Select>
+            </Form.Item>
+            {selectedUser.firstName.length > 0 && (
+              <Form.Item label="Create New Buyer">
+                <Input
+                  type="text"
+                  onChange={(e: React.FormEvent<HTMLInputElement>) =>
+                    setNewBuyerName(e?.currentTarget?.value)
+                  }
+                  placeholder={'Buyer Name (First and Last)'}
+                />
+                <Button
+                  onClick={() => createBuyer()}
+                  disabled={!newBuyerName.length}
+                  type="primary"
+                >
+                  Add New Buyer
+                </Button>
+              </Form.Item>
+            )}
+          </>
         )}
         <h2>Documents To Send: </h2>
         {selectedUser.firstName.length > 0 && (
@@ -371,8 +486,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
                 <Button icon={<UploadOutlined />}>Select File</Button>
               </Upload>
             </Form.Item>
-            <Form.Item label="Expiration For Counter Offer">
-              <DatePicker size="large" />
+            <Form.Item label="Expiration For Document">
+              <DatePicker size="large" showTime onChange={setDate} />
             </Form.Item>
           </Form.Item>
         )}

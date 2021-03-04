@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, FC } from 'react';
+import { Form, Input, Button, Space, Select, Upload, Spin } from 'antd';
+import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
+import axios from 'axios';
+import { User, FormOptions } from './ListingDocumentsForm';
 
 const counterOfferMutation: string = `
 mutation addCounterOffer(
@@ -32,3 +36,17 @@ mutation createBuyer($buyerName: String!, $sellerId:String!) {
     }
   }
 `;
+
+interface NewBuyerFormProps {
+  selectedUser: User[];
+  buyerOptions: FormOptions;
+}
+
+const NewBuyerForm: FC<NewBuyerFormProps> = ({
+  selectedUser,
+  buyerOptions
+}) => {
+  return <></>;
+};
+
+export default NewBuyerFormProps;
