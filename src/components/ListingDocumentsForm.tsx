@@ -1,14 +1,5 @@
 import React, { useState, useEffect, FC } from 'react';
-import {
-  Form,
-  Input,
-  Button,
-  Select,
-  Upload,
-  Spin,
-  Space,
-  TimePicker
-} from 'antd';
+import { Form, Input, Button, Select, Upload, Spin, Space } from 'antd';
 import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { DatePicker } from 'antd';
 
@@ -106,6 +97,14 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       value: 'SPQ'
     },
     {
+      label: 'Residential Purchase Agreement Copy',
+      value: 'RPAC'
+    },
+    {
+      label: 'EMD Receipt',
+      value: 'EMD'
+    },
+    {
       label: 'Residential Purchase Agreement',
       value: 'RPA'
     },
@@ -116,8 +115,38 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     {
       label: 'Repair for Request',
       value: 'RR'
+    },
+    {
+      label: 'Proof of Downpayment Funds',
+      value: 'PDPF'
+    },
+    {
+      label: 'Escrow Instructions',
+      value: 'ESIN'
+    },
+    {
+      label: 'Escrow Holder Acceptance Acknowledgment',
+      value: 'EHAA'
+    },
+    {
+      label: 'Natural Hazard Disclosure',
+      value: 'NHD'
+    },
+    {
+      label: 'Preliminary Title',
+      value: 'PRET'
+    },
+    {
+      label: 'Buyers Approval of HOA & CC&Rs',
+      value: 'BAPR'
+    },
+    {
+      label: 'Escrow Instructions',
+      value: 'ESIN'
     }
   ];
+
+  const counterOfferDocs: string[] = ['RPA', 'BCO', 'RR', 'RPAC', 'EMD'];
 
   const createBuyer = () => {
     return axios
@@ -139,7 +168,6 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         }
       })
       .then((res) => {
-        console.log(res);
         const buyerData = res?.data?.data?.createBuyer || {};
         if (buyerData._id) {
           const newBuyerOptions = [
@@ -155,11 +183,15 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       });
   };
 
-  const removeDocument = (documentName: string) => {
-    const userId = selectedUser._id;
-    return axios
-      .post('/api/user/graphqlUser', {
-        query: `mutation removeDocument ($userId: String!, $documentName: String!) {
+  const removeDocument = (
+    documentName: string,
+    userType: string = 'seller'
+  ) => {
+    if (userType === 'seller') {
+      const userId = selectedUser._id;
+      return axios
+        .post('/api/user/graphqlUser', {
+          query: `mutation removeDocument ($userId: String!, $documentName: String!) {
               removeDocument (userId: $userId, documentName: $documentName){
                   _id,
                   documents {
@@ -169,17 +201,49 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
                   }
               }
           }`,
+          variables: {
+            userId,
+            documentName
+          }
+        })
+        .then(() => {
+          const filteredDocuments: Document[] = selectedUser.documents.filter(
+            ({ name }) => name !== documentName
+          );
+          const updatedUser = { ...selectedUser, documents: filteredDocuments };
+          setUser(updatedUser);
+          addDocuments([]);
+        });
+    }
+
+    const buyerId = selectedBuyer._id;
+    return axios
+      .post('/api/user/graphqlBuyer', {
+        query: `mutation removeDocument ($buyerId: String!, $documentName: String!) {
+              removeDocument (buyerId: $buyerId, documentName: $documentName){
+                  _id,
+                  counterOffers {
+                      name,
+                      completed,
+                      signatureId,
+                      counterOfferId
+                  }
+              }
+          }`,
         variables: {
-          userId,
+          buyerId,
           documentName
         }
       })
       .then(() => {
-        const filteredDocuments: Document[] = selectedUser.documents.filter(
+        const filteredDocuments: CounterOffers[] = selectedBuyer.counterOffers.filter(
           ({ name }) => name !== documentName
         );
-        const updatedUser = { ...selectedUser, documents: filteredDocuments };
-        setUser(updatedUser);
+        const updatedBuyer = {
+          ...selectedBuyer,
+          counterOffers: filteredDocuments
+        };
+        setBuyer(updatedBuyer);
         addDocuments([]);
       });
   };
@@ -211,6 +275,36 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     }
 
     if (formType === 'buyer') {
+      const supportingDocs = ['PDPF', 'EMD', 'RPAC'];
+
+      // TODO: we only ever send one document at a time
+      // no need for an array here
+      if (supportingDocs.includes(documents[0])) {
+        return axios
+          .post('/api/buyer/graphqlBuyer', {
+            operationName: 'addSupportingDocument',
+            query: `mutation addSupportingDocument(
+          $buyerId: String!,
+          $pdfUrl: String!,
+          $title: String!
+        ){
+          addSupportingDocument (buyerId:$buyerId, pdfUrl: $pdfUrl, title: $title){
+            _id
+            supportingDocuments {
+              name
+              url
+            }
+          }
+        }`,
+            variables: {
+              buyerId: selectedBuyer._id,
+              pdfUrl,
+              title: documents[0]
+            }
+          })
+          .then(() => clearForm())
+          .catch(() => clearForm());
+      }
       return axios
         .post('/api/buyer/graphqlBuyer', {
           operationName: 'addCounterOffer',
@@ -247,8 +341,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     return axios
       .post('/api/user/graphqlUser', {
         operationName: 'addDocument',
-        query: `mutation addDocument ($userId: String!, $address: String!, $county: String!, $parcel: String!, $documents: [String!], $pdfUrl: String!) {
-            addDocument (userId: $userId, documents: $documents, address: $address, parcel: $parcel, county: $county, pdfUrl: $pdfUrl){
+        query: `mutation addDocument ($userId: String!, $address: String!, $county: String!, $parcel: String!, $documents: [String!], $pdfUrl: String!, $expirationTime: String!) {
+            addDocument (userId: $userId, documents: $documents, address: $address, parcel: $parcel, county: $county, pdfUrl: $pdfUrl, expirationTime: $expirationTime){
                 _id,
                 documents {
                     name,
@@ -263,6 +357,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
           address,
           county,
           parcel,
+          expirationTime: expirationDate.toString(),
           pdfUrl
         }
       })
@@ -272,7 +367,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
 
   const handleChange = (val: string) => {
     const selectedUser = userData.find((user: User) => user._id === val);
-    console.log(selectedUser?.buyers);
+
     if (selectedUser) {
       setUser(selectedUser);
       const buyerOptions = selectedUser.buyers.map((buyer) => ({
@@ -468,6 +563,24 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             )}
           </>
         )}
+        <>
+          {selectedBuyer.counterOffers.length > 0 && (
+            <h2>Sent Buyer Documents: </h2>
+          )}
+          {(selectedBuyer.counterOffers || []).map((doc) => (
+            <>
+              <Space key={doc.name} align="baseline" style={{ width: '100%' }}>
+                <Form.Item>{doc.name}</Form.Item>
+                <Form.Item label="Completed">
+                  <Input checked={doc.completed} disabled type="checkbox" />
+                </Form.Item>
+                <MinusCircleOutlined
+                  onClick={() => removeDocument(doc.name, 'buyer')}
+                />
+              </Space>
+            </>
+          ))}
+        </>
         <h2>Documents To Send: </h2>
         {selectedUser.firstName.length > 0 && (
           <Form.Item
@@ -479,7 +592,11 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             <Form.Item label="Document Name">
               <Select
                 style={{ width: 200 }}
-                options={documentOptions}
+                options={documentOptions.filter((doc) =>
+                  formType === 'buyer'
+                    ? counterOfferDocs.includes(doc.value)
+                    : !counterOfferDocs.includes(doc.value)
+                )}
                 onChange={updateForm}
               />
               <Upload {...props}>
