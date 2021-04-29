@@ -28,10 +28,16 @@ const App: FC = () => {
                   counterOfferId
                   completed
                 }
+                supportingDocuments {
+                  name
+                }
               }
               documents {
                 name
                 completed
+              }
+              documents {
+                name
               }
 
             }

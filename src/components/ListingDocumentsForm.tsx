@@ -10,6 +10,10 @@ export type FormOptions = {
   value: string;
 };
 
+type SupportingDocument = {
+  name: string;
+};
+
 type Document = {
   name: string;
   completed: boolean;
@@ -27,10 +31,11 @@ export type Buyer = {
   _id: string;
   name: string;
   counterOffers: CounterOffers[];
+  supportingDocuments: SupportingDocument[];
 };
 
 export type User = {
-  address: string;
+  address?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -74,6 +79,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [selectedBuyer, setBuyer] = useState<Buyer>({
     name: '',
     _id: '',
+    supportingDocuments: [],
     counterOffers: []
   });
 
@@ -92,6 +98,46 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   }, [userData]);
 
   const documentOptions: FormOptions[] = [
+    {
+      label: 'Statewide Buyer and Seller Advisory',
+      value: 'SBSA'
+    },
+    {
+      label: 'Broker/Escrow Relationship Disclosure',
+      value: 'BERD'
+    },
+    {
+      label: 'Transfer Disclosure Statement',
+      value: 'TDS'
+    },
+    {
+      label: 'Water Conserving Carbon Monoxide',
+      value: 'WCCM'
+    },
+    {
+      label: 'Water Heater and Smoke Detector',
+      value: 'WHSD'
+    },
+    {
+      label: 'Earthquake Hazard Disclosure',
+      value: 'EHD'
+    },
+    {
+      label: 'Earthquare/Environmental Booklet Receipt',
+      value: 'EEBR'
+    },
+    {
+      label: 'Lead Based Paint Disclosure',
+      value: 'LPD'
+    },
+    {
+      label: 'Market Condition Advisory',
+      value: 'MCA'
+    },
+    {
+      label: 'Agent Visual Inspection Disclosure',
+      value: 'AVID'
+    },
     {
       label: 'Seller Property Questionnaire',
       value: 'SPQ'
@@ -113,8 +159,12 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       value: 'BCO'
     },
     {
-      label: 'Repair for Request',
+      label: 'Repair Request',
       value: 'RR'
+    },
+    {
+      label: 'Repair Request Counter Offer',
+      value: 'RRCO'
     },
     {
       label: 'Proof of Downpayment Funds',
@@ -141,12 +191,44 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       value: 'BAPR'
     },
     {
-      label: 'Escrow Instructions',
-      value: 'ESIN'
+      label: 'Physical Inspection Contingency Report',
+      value: 'PICR'
+    },
+    {
+      label: 'Conditional Loan Approval',
+      value: 'CLA'
+    },
+    {
+      label: 'Loan Contingency Removal',
+      value: 'LCR'
+    },
+    {
+      label: 'Buyers ESS Wire Receipt',
+      value: 'ESS'
+    },
+    {
+      label: 'Verification of Property Condition',
+      value: 'VPC'
+    },
+    {
+      label: 'Sellers Estimate Settlement Statement',
+      value: 'SESS'
     }
   ];
 
-  const counterOfferDocs: string[] = ['RPA', 'BCO', 'RR', 'RPAC', 'EMD'];
+  const buyerDocs: string[] = [
+    'RPA',
+    'BCO',
+    'RR',
+    'RRCO',
+    'RPAC',
+    'EMD',
+    'PICR',
+    'CLA',
+    'LCR',
+    'ESS',
+    'PDPF'
+  ];
 
   const createBuyer = () => {
     return axios
@@ -275,7 +357,15 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     }
 
     if (formType === 'buyer') {
-      const supportingDocs = ['PDPF', 'EMD', 'RPAC'];
+      const supportingDocs = [
+        'PDPF',
+        'EMD',
+        'RPAC',
+        'PICR',
+        'CLA',
+        'LCR',
+        'ESS'
+      ];
 
       // TODO: we only ever send one document at a time
       // no need for an array here
@@ -508,7 +598,6 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
                 onChange={(e: React.FormEvent<HTMLInputElement>) =>
                   setUserAddress(e?.currentTarget?.value)
                 }
-                value={selectedUser.address}
                 placeholder={selectedUser.address}
               />
             </Form.Item>
@@ -580,6 +669,14 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
               </Space>
             </>
           ))}
+          <h2>Supporting Documents</h2>
+          {(selectedBuyer.supportingDocuments || []).map((doc) => (
+            <>
+              <Space key={doc.name} align="baseline" style={{ width: '100%' }}>
+                <Form.Item>{doc.name}</Form.Item>
+              </Space>
+            </>
+          ))}
         </>
         <h2>Documents To Send: </h2>
         {selectedUser.firstName.length > 0 && (
@@ -594,8 +691,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
                 style={{ width: 200 }}
                 options={documentOptions.filter((doc) =>
                   formType === 'buyer'
-                    ? counterOfferDocs.includes(doc.value)
-                    : !counterOfferDocs.includes(doc.value)
+                    ? buyerDocs.includes(doc.value)
+                    : !buyerDocs.includes(doc.value)
                 )}
                 onChange={updateForm}
               />
