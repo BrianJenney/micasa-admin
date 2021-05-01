@@ -317,7 +317,9 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
           documentName
         }
       })
-      .then(() => {
+      .then((res) => {
+        // TODO: surface an error if one returned from graphql
+        console.log(res);
         const filteredDocuments: CounterOffers[] = selectedBuyer.counterOffers.filter(
           ({ name }) => name !== documentName
         );
@@ -451,7 +453,11 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
           pdfUrl
         }
       })
-      .then(() => clearForm())
+      .then((res) => {
+        // TODO: surface an error if one returned from graphql
+        console.log(res);
+        clearForm();
+      })
       .catch(() => clearForm());
   };
 
