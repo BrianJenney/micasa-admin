@@ -288,7 +288,10 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
             documentName
           }
         })
-        .then(() => {
+        .then((res) => {
+          if (res.data?.errors) {
+            alert(`Error occured: ${res.data.errors[0]}`);
+          }
           const filteredDocuments: Document[] = selectedUser.documents.filter(
             ({ name }) => name !== documentName
           );
@@ -318,8 +321,9 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         }
       })
       .then((res) => {
-        // TODO: surface an error if one returned from graphql
-        console.log(res);
+        if (res.data?.errors) {
+          alert(`Error occured: ${res.data.errors[0]}`);
+        }
         const filteredDocuments: CounterOffers[] = selectedBuyer.counterOffers.filter(
           ({ name }) => name !== documentName
         );
