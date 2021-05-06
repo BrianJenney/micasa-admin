@@ -213,6 +213,10 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     {
       label: 'Sellers Estimate Settlement Statement',
       value: 'SESS'
+    },
+    {
+      label: 'Inspection Report',
+      value: 'IR'
     }
   ];
 
@@ -227,7 +231,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
     'CLA',
     'LCR',
     'ESS',
-    'PDPF'
+    'PDPF',
+    'IR'
   ];
 
   const createBuyer = () => {
@@ -290,7 +295,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         })
         .then((res) => {
           if (res.data?.errors) {
-            alert(`Error occured: ${res.data.errors[0]}`);
+            alert(`Error occured: ${JSON.stringify(res.data.errors[0])}`);
           }
           const filteredDocuments: Document[] = selectedUser.documents.filter(
             ({ name }) => name !== documentName
@@ -322,7 +327,7 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       })
       .then((res) => {
         if (res.data?.errors) {
-          alert(`Error occured: ${res.data.errors[0]}`);
+          alert(`Error occured: ${JSON.stringify(res.data.errors[0])}`);
         }
         const filteredDocuments: CounterOffers[] = selectedBuyer.counterOffers.filter(
           ({ name }) => name !== documentName
@@ -370,7 +375,8 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
         'PICR',
         'CLA',
         'LCR',
-        'ESS'
+        'ESS',
+        'IR'
       ];
 
       // TODO: we only ever send one document at a time
@@ -459,7 +465,9 @@ const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
       })
       .then((res) => {
         // TODO: surface an error if one returned from graphql
-        console.log(res);
+        if (res.data?.errors) {
+          alert(`Error occured: ${JSON.stringify(res.data.errors[0])}`);
+        }
         clearForm();
       })
       .catch(() => clearForm());
