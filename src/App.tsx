@@ -1,8 +1,8 @@
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 import ListingDocuments from './components/ListingDocumentsForm';
-import { UserData } from './components/ListingDocumentsForm';
+import { UserData } from './types';
 
 const App: FC = () => {
   const [userData, setUserData] = useState<UserData>([]);

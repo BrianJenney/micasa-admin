@@ -2,55 +2,15 @@ import React, { useState, useEffect, FC } from 'react';
 import { Form, Input, Button, Select, Upload, Spin, Space } from 'antd';
 import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import { DatePicker } from 'antd';
-
+import {
+  ListingDocumentFormProps,
+  FormOptions,
+  User,
+  Buyer,
+  Document,
+  CounterOffers
+} from '../types';
 import axios from 'axios';
-
-export type FormOptions = {
-  label: string;
-  value: string;
-};
-
-type SupportingDocument = {
-  name: string;
-};
-
-type Document = {
-  name: string;
-  completed: boolean;
-  signatureId: string;
-};
-
-export type CounterOffers = {
-  name: string;
-  completed: boolean;
-  signatureId: string;
-  counterOfferId: string;
-};
-
-export type Buyer = {
-  _id: string;
-  name: string;
-  counterOffers: CounterOffers[];
-  supportingDocuments: SupportingDocument[];
-};
-
-export type User = {
-  address?: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  _id: string;
-  documents: Document[];
-  county?: string;
-  parcel: string;
-  buyers: Buyer[];
-};
-
-export type UserData = User[];
-
-export interface ListingDocumentFormProps {
-  userData: User[];
-}
 
 const ListingDocumentsForm: FC<ListingDocumentFormProps> = ({ userData }) => {
   const [form] = Form.useForm();

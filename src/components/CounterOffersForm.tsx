@@ -2,7 +2,7 @@ import React, { useState, useEffect, FC } from 'react';
 import { Form, Input, Button, Space, Select, Upload, Spin } from 'antd';
 import { MinusCircleOutlined, UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import { User, FormOptions } from './ListingDocumentsForm';
+import { User, FormOptions } from '../types';
 
 const counterOfferMutation: string = `
 mutation addCounterOffer(
